@@ -2,7 +2,7 @@
 
 > 🔌 Cài đặt Zalo Personal Account làm cổng kết nối gateway trong [Hermes Agent](https://github.com/NousResearch/hermes-agent) — hoạt động real-time giống Telegram.
 
-**👤 Tác giả:** [Tuấn Techla AI](https://www.facebook.com/TuanTechlaAi/) · [GitHub](https://github.com/tuantoha)
+**👤 Tác giả:** [Tuấn Techla AI](https://www.facebook.com/TuanTechlaAi/) · [GitHub](https://github.com/tuantoha) · ☎️ 08 6789 6096
 
 ## ✨ Tính năng
 
@@ -177,6 +177,7 @@ hermes -s zalo-personal-gateway "Cài đặt Zalo gateway"
 
 - **Facebook:** [Tuấn Techla AI](https://www.facebook.com/TuanTechlaAi/)
 - **GitHub:** [@tuantoha](https://github.com/tuantoha)
+- **☎️ Điện thoại:** 08 6789 6096
 
 ## 📄 License
 
