@@ -107,6 +107,100 @@ TOOLS = [
         "description": "Đồng bộ lịch sử tin nhắn từ Zalo về SQLite DB.",
         "inputSchema": {"type": "object", "properties": {}, "required": []}
     },
+    {
+        "name": "zalo_group_info",
+        "description": "Lấy thông tin chi tiết 1 nhóm: tên, mô tả, admin, số thành viên.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "group_id": {"type": "string", "description": "ID nhóm Zalo"}
+            },
+            "required": ["group_id"]
+        }
+    },
+    {
+        "name": "zalo_list_members",
+        "description": "Lấy danh sách thành viên trong 1 nhóm Zalo.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "group_id": {"type": "string", "description": "ID nhóm Zalo"}
+            },
+            "required": ["group_id"]
+        }
+    },
+    {
+        "name": "zalo_add_member",
+        "description": "Thêm thành viên vào nhóm Zalo (cần quyền admin/trưởng nhóm).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "group_id": {"type": "string", "description": "ID nhóm Zalo"},
+                "user_ids": {"type": "array", "items": {"type": "string"}, "description": "Danh sách user ID cần thêm"}
+            },
+            "required": ["group_id", "user_ids"]
+        }
+    },
+    {
+        "name": "zalo_remove_member",
+        "description": "Xoá thành viên khỏi nhóm Zalo (cần quyền admin/trưởng nhóm).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "group_id": {"type": "string", "description": "ID nhóm Zalo"},
+                "user_ids": {"type": "array", "items": {"type": "string"}, "description": "Danh sách user ID cần xoá"}
+            },
+            "required": ["group_id", "user_ids"]
+        }
+    },
+    {
+        "name": "zalo_block_member",
+        "description": "Chặn thành viên trong nhóm Zalo (cần quyền admin).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "group_id": {"type": "string", "description": "ID nhóm Zalo"},
+                "user_id": {"type": "string", "description": "User ID cần chặn"}
+            },
+            "required": ["group_id", "user_id"]
+        }
+    },
+    {
+        "name": "zalo_send_dm",
+        "description": "Gửi tin nhắn riêng (DM) đến 1 người dùng Zalo.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "user_id": {"type": "string", "description": "User ID người nhận"},
+                "message": {"type": "string", "description": "Nội dung tin nhắn"}
+            },
+            "required": ["user_id", "message"]
+        }
+    },
+    {
+        "name": "zalo_analyze_group",
+        "description": "Phân tích tổng quan 1 nhóm: thành viên tích cực nhất, số tin nhắn, thời gian hoạt động, thành viên im lặng lâu.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "group_id": {"type": "string", "description": "ID nhóm Zalo"},
+                "days": {"type": "integer", "description": "Số ngày phân tích (mặc định 7)", "default": 7}
+            },
+            "required": ["group_id"]
+        }
+    },
+    {
+        "name": "zalo_get_inactive_members",
+        "description": "Tìm thành viên không tương tác trong N ngày qua để nhắc nhở hoặc xoá.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "group_id": {"type": "string", "description": "ID nhóm Zalo"},
+                "days": {"type": "integer", "description": "Số ngày không tương tác (mặc định 30)", "default": 30}
+            },
+            "required": ["group_id"]
+        }
+    },
 ]
 
 # --- Tool handlers ---
@@ -170,6 +264,90 @@ def handle_zalo_db_sync(args: dict) -> str:
     r = run_openzca("db", "sync", timeout=120)
     return json.dumps(r, ensure_ascii=False)
 
+def handle_zalo_group_info(args: dict) -> str:
+    r = run_openzca("group", "info", args["group_id"])
+    return json.dumps(r, ensure_ascii=False)
+
+def handle_zalo_list_members(args: dict) -> str:
+    r = run_openzca("group", "members", args["group_id"], "--json")
+    return json.dumps(r, ensure_ascii=False)
+
+def handle_zalo_add_member(args: dict) -> str:
+    gid = args["group_id"]
+    users = args["user_ids"]
+    r = run_openzca("group", "add", gid, *users)
+    return json.dumps(r, ensure_ascii=False)
+
+def handle_zalo_remove_member(args: dict) -> str:
+    gid = args["group_id"]
+    users = args["user_ids"]
+    r = run_openzca("group", "remove", gid, *users)
+    return json.dumps(r, ensure_ascii=False)
+
+def handle_zalo_block_member(args: dict) -> str:
+    r = run_openzca("group", "block", args["group_id"], args["user_id"])
+    return json.dumps(r, ensure_ascii=False)
+
+def handle_zalo_send_dm(args: dict) -> str:
+    r = run_openzca("msg", "send", args["user_id"], args["message"])
+    return json.dumps(r, ensure_ascii=False)
+
+def handle_zalo_analyze_group(args: dict) -> str:
+    gid = args["group_id"]
+    days = args.get("days", 7)
+    # Sync DB first
+    run_openzca("db", "sync", "group", gid, timeout=60)
+    # Get messages
+    r = run_openzca("db", "group", "messages", gid, "--json", "--limit", "500", check=False)
+    if not r.get("ok") and "messages" not in r:
+        return json.dumps(r, ensure_ascii=False)
+    
+    messages = r.get("messages", [])
+    import time as _time
+    cutoff = _time.time() * 1000 - days * 86400 * 1000
+    
+    member_stats = {}
+    for m in messages:
+        sid = str(m.get("senderId", ""))
+        ts = int(m.get("ts", m.get("timestamp", 0)))
+        if sid not in member_stats:
+            member_stats[sid] = {"count": 0, "last_ts": 0, "name": m.get("senderName", sid)}
+        member_stats[sid]["count"] += 1
+        if ts > member_stats[sid]["last_ts"]:
+            member_stats[sid]["last_ts"] = ts
+    
+    # Get member list
+    members_r = run_openzca("group", "members", gid, "--json", check=False)
+    all_members = members_r if isinstance(members_r, list) else members_r.get("members", [])
+    
+    inactive = []
+    for m in all_members:
+        uid = str(m.get("userId", ""))
+        name = m.get("displayName", uid)
+        if uid in member_stats:
+            if member_stats[uid]["last_ts"] < cutoff:
+                inactive.append({"userId": uid, "name": name, "last_active_days": round((_time.time()*1000 - member_stats[uid]["last_ts"])/86400000, 1)})
+        else:
+            inactive.append({"userId": uid, "name": name, "last_active_days": "never"})
+    
+    return json.dumps({
+        "ok": True,
+        "total_messages": len(messages),
+        "active_members": len(member_stats),
+        "total_members": len(all_members),
+        "top_senders": sorted(member_stats.items(), key=lambda x: x[1]["count"], reverse=True)[:10],
+        "inactive": inactive
+    }, ensure_ascii=False)
+
+def handle_zalo_get_inactive_members(args: dict) -> str:
+    # Reuse analyze logic but return only inactive
+    result = json.loads(handle_zalo_analyze_group(args))
+    return json.dumps({
+        "ok": True,
+        "inactive": result.get("inactive", []),
+        "total_members": result.get("total_members", 0)
+    }, ensure_ascii=False)
+
 HANDLERS = {
     "zalo_auth_status": handle_zalo_auth_status,
     "zalo_auth_login_qr": handle_zalo_auth_login_qr,
@@ -180,6 +358,14 @@ HANDLERS = {
     "zalo_get_me": handle_zalo_get_me,
     "zalo_db_enable": handle_zalo_db_enable,
     "zalo_db_sync": handle_zalo_db_sync,
+    "zalo_group_info": handle_zalo_group_info,
+    "zalo_list_members": handle_zalo_list_members,
+    "zalo_add_member": handle_zalo_add_member,
+    "zalo_remove_member": handle_zalo_remove_member,
+    "zalo_block_member": handle_zalo_block_member,
+    "zalo_send_dm": handle_zalo_send_dm,
+    "zalo_analyze_group": handle_zalo_analyze_group,
+    "zalo_get_inactive_members": handle_zalo_get_inactive_members,
 }
 
 # --- MCP stdio loop ---

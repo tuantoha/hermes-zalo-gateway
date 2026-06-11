@@ -165,49 +165,65 @@ class ZaloAdapter(BasePlatformAdapter):
     # ---- Internal ----
 
     async def _listen_loop(self):
-        """Poll Zalo messages via openzca DB instead of listen subprocess."""
+        """Poll Zalo messages via openzca DB — sync and read ALL groups."""
         import time
         self._last_msg_id = None
-        logger.info("[Zalo] DB poller started (interval=5s)")
+        self._group_ids = []
+        logger.info("[Zalo] DB poller started (interval=5s, multi-group)")
 
         while self._running:
             try:
-                # Sync DB first to get latest messages
-                sync_proc = await asyncio.create_subprocess_exec(
-                    OPENZCA, "--profile", PROFILE,
-                    "db", "sync", "group", "2747350517158961481",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                await asyncio.wait_for(sync_proc.communicate(), timeout=30)
+                # Refresh group list periodically
+                if not self._group_ids or time.time() - getattr(self, '_last_group_refresh', 0) > 300:
+                    proc = await asyncio.create_subprocess_exec(
+                        OPENZCA, "--profile", PROFILE, "group", "list", "--json",
+                        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                    )
+                    stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
+                    groups = json.loads(stdout.decode())
+                    self._group_ids = [g["groupId"] for g in groups if "groupId" in g]
+                    self._last_group_refresh = time.time()
+                    logger.info(f"[Zalo] Polling {len(self._group_ids)} groups")
 
-                # Then poll for new messages
-                new_messages = []
-                proc = await asyncio.create_subprocess_exec(
-                    OPENZCA, "--profile", PROFILE,
-                    "db", "group", "messages", "2747350517158961481", "--json", "--limit", "10",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=15)
-                if proc.returncode != 0:
-                    await asyncio.sleep(5)
-                    continue
+                all_messages = []
+                for gid in self._group_ids:
+                    try:
+                        # Sync DB for this group
+                        sync_proc = await asyncio.create_subprocess_exec(
+                            OPENZCA, "--profile", PROFILE,
+                            "db", "sync", "group", gid,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
+                        await asyncio.wait_for(sync_proc.communicate(), timeout=30)
 
-                try:
-                    raw = stdout.decode().strip()
-                    # Fix JS-object to JSON
-                    raw = re.sub(r": '([^']*)'", r': "\1"', raw)
-                    raw = re.sub(r'(?<=[\s\{,])([a-zA-Z_]\w*):', r'"\1":', raw)
-                    raw = re.sub(r',\s*}', '}', raw)
-                    raw = re.sub(r',\s*]', ']', raw)
-                    data = json.loads(raw)
-                    messages = data.get("messages", [])
-                except Exception:
-                    await asyncio.sleep(5)
-                    continue
+                        # Poll messages
+                        proc = await asyncio.create_subprocess_exec(
+                            OPENZCA, "--profile", PROFILE,
+                            "db", "group", "messages", gid, "--json", "--limit", "10",
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
+                        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=10)
+                        if proc.returncode != 0:
+                            continue
 
-                for msg in reversed(messages):
+                        raw = stdout.decode().strip()
+                        raw = re.sub(r": '([^']*)'", r': "\1"', raw)
+                        raw = re.sub(r'(?<=[\s\{,])([a-zA-Z_]\w*):', r'"\1":', raw)
+                        raw = re.sub(r',\s*}', '}', raw)
+                        raw = re.sub(r',\s*]', ']', raw)
+                        data = json.loads(raw)
+                        for m in data.get("messages", []):
+                            m["_group_id"] = gid
+                            all_messages.append(m)
+                    except Exception:
+                        continue
+
+                # Process new messages sorted by timestamp
+                all_messages.sort(key=lambda m: int(m.get("ts", m.get("timestamp", 0))))
+
+                for msg in all_messages:
                     msg_id = str(msg.get("msgId", ""))
                     if self._last_msg_id and msg_id <= self._last_msg_id:
                         continue
@@ -215,7 +231,8 @@ class ZaloAdapter(BasePlatformAdapter):
                     sender_id = str(msg.get("senderId", ""))
                     content = msg.get("content", "")
                     thread_id = str(msg.get("threadId", ""))
-                    is_group = bool(msg.get("groupId"))
+                    group_id = msg.get("_group_id", "")
+                    is_group = bool(group_id)
 
                     if sender_id == self._me_id:
                         continue
@@ -223,7 +240,7 @@ class ZaloAdapter(BasePlatformAdapter):
                         continue
 
                     self._last_msg_id = msg_id
-                    chat_id = thread_id or sender_id
+                    chat_id = group_id or thread_id or sender_id
 
                     source = self.build_source(
                         chat_id=chat_id,
