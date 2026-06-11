@@ -2,6 +2,8 @@
 
 > 🔌 Cài đặt Zalo Personal Account làm cổng kết nối gateway trong [Hermes Agent](https://github.com/NousResearch/hermes-agent) — hoạt động real-time giống Telegram.
 
+**👤 Tác giả:** [Tuấn Techla AI](https://www.facebook.com/TuanTechlaAi/) · [GitHub](https://github.com/tuantoha)
+
 ## ✨ Tính năng
 
 - ✅ **Real-time** — Nhận tin nhắn Zalo (DM + Group) → AI xử lý → Tự động phản hồi
@@ -106,6 +108,11 @@ hermes -s zalo-personal-gateway "Cài đặt Zalo gateway"
 | Gateway không start (macOS) | Dùng `os.fork()` như trong install.sh |
 | Không nhận tin nhắn mới | Adapter tự sync DB mỗi 5s |
 | QR không hiển thị | Mở file: `open /tmp/zalo_qr.png` |
+
+## 📞 Liên hệ
+
+- **Facebook:** [Tuấn Techla AI](https://www.facebook.com/TuanTechlaAi/)
+- **GitHub:** [@tuantoha](https://github.com/tuantoha)
 
 ## 📄 License
 
