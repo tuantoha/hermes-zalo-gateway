@@ -6,12 +6,36 @@
 
 ## ✨ Tính năng
 
-- ✅ **Real-time** — Nhận tin nhắn Zalo (DM + Group) → AI xử lý → Tự động phản hồi
-- ✅ **Gateway native** — Hiển thị `✓ zalo connected` giống Telegram
-- ✅ **DB polling** — Quét tin nhắn mới mỗi 5 giây
-- ✅ **Group chat** — Hỗ trợ nhắn và phản hồi trong nhóm Zalo
-- ✅ **MCP Server** — 9 MCP tools để gửi/nhận/lịch sử/nhóm
-- ✅ **One-click install** — Script tự động toàn bộ quy trình
+### 🤖 Auto-Reply Real-time
+- **Gateway native** — Tích hợp trực tiếp vào Hermes Gateway như 1 platform (`✓ zalo connected`)
+- **Poll 9 nhóm cùng lúc** — Quét tin nhắn mới mỗi 5 giây, refresh danh sách nhóm mỗi 5 phút
+- **AI tự động phản hồi** — Nhận tin nhắn → Hermes AI xử lý → Gửi câu trả lời vào đúng nhóm
+- **Không giới hạn nhóm** — Theo dõi tất cả nhóm Zalo tài khoản đang tham gia
+
+### 👥 Quản lý Nhóm & Thành viên (Admin)
+- **Thêm/Xoá thành viên** — Chỉ cần user ID, xoá hàng loạt được
+- **Chặn thành viên** — Block người dùng khỏi nhóm
+- **Gửi tin nhắn riêng (DM)** — Nhắn trực tiếp đến từng thành viên
+- **Mời lại qua link** — Tự động tạo link mời khi cần thêm lại thành viên đã xoá
+- **Kiểm tra quyền** — Tự động phát hiện nhóm nào có quyền admin
+
+### 📊 Phân tích & Báo cáo
+- **Top người gửi** — Ai nói nhiều nhất trong N ngày qua
+- **Thành viên im lặng** — Phát hiện ai lâu không tương tác (để nhắc nhở hoặc xoá)
+- **Thống kê nhóm** — Tổng số tin nhắn, số thành viên tích cực, thời gian hoạt động
+- **Lịch sử chat** — Đọc lại toàn bộ tin nhắn từ SQLite DB
+
+### 🔧 MCP Server — 17 Tools
+- **💬 Nhắn tin:** `send_message`, `send_dm`
+- **👥 Quản lý:** `list_groups`, `group_info`, `list_members`, `add_member`, `remove_member`, `block_member`
+- **📊 Phân tích:** `analyze_group`, `get_inactive_members`
+- **📝 Lịch sử:** `get_history`, `db_sync`, `db_enable`, `listen`
+- **🔐 Tài khoản:** `get_me`, `auth_status`, `auth_login_qr`
+
+### 🚀 Cài đặt 1-click
+- **Script tự động** — `install.sh` làm mọi thứ: cài openzca → QR login → copy adapter → sửa Hermes core → config → restart
+- **Hermes Skill** — Load skill `zalo-personal-gateway` để agent khác tự cài đặt
+- **Tương thích** — macOS & Linux, Node.js ≥ 22, Python ≥ 3.11
 
 ## 📦 Cài đặt nhanh
 
