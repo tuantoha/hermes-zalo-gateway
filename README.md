@@ -79,18 +79,58 @@ cp zalo_mcp_server.py ~/.hermes/mcp-servers/zalo/server.py
 hermes mcp add zalo --command python3 --args ~/.hermes/mcp-servers/zalo/server.py
 ```
 
-9 MCP tools có sẵn:
+**17 MCP tools có sẵn:**
+
 | Tool | Chức năng |
 |------|-----------|
-| `zalo_send_message` | Gửi tin nhắn text |
-| `zalo_listen` | Lắng nghe tin nhắn đến |
-| `zalo_list_groups` | Danh sách nhóm |
-| `zalo_get_history` | Lịch sử chat |
-| `zalo_get_me` | Thông tin tài khoản |
+| **💬 Nhắn tin** | |
+| `zalo_send_message` | Gửi tin nhắn text vào group |
+| `zalo_send_dm` | Gửi tin nhắn riêng (DM) đến 1 người |
+| **👥 Quản lý nhóm (admin)** | |
+| `zalo_list_groups` | Danh sách 9 nhóm đang tham gia |
+| `zalo_group_info` | Thông tin chi tiết 1 nhóm (tên, admin, quyền) |
+| `zalo_list_members` | Danh sách thành viên trong nhóm |
+| `zalo_add_member` | Thêm thành viên vào nhóm |
+| `zalo_remove_member` | Xoá thành viên khỏi nhóm |
+| `zalo_block_member` | Chặn thành viên |
+| **📊 Phân tích** | |
+| `zalo_analyze_group` | Phân tích nhóm: top người gửi, thống kê, thành viên im lặng |
+| `zalo_get_inactive_members` | Tìm thành viên lâu không tương tác (để nhắc nhở/xoá) |
+| **📝 Lịch sử** | |
+| `zalo_get_history` | Lịch sử tin nhắn từ SQLite DB |
+| `zalo_db_sync` | Đồng bộ tin nhắn mới về DB |
 | `zalo_db_enable` | Bật SQLite DB |
-| `zalo_db_sync` | Đồng bộ lịch sử |
-| `zalo_auth_status` | Kiểm tra đăng nhập |
-| `zalo_auth_login_qr` | Lấy QR code |
+| `zalo_listen` | Lắng nghe tin nhắn real-time |
+| **🔐 Tài khoản** | |
+| `zalo_get_me` | Thông tin tài khoản Zalo |
+| `zalo_auth_status` | Kiểm tra trạng thái đăng nhập |
+| `zalo_auth_login_qr` | Lấy QR code đăng nhập |
+
+**Ví dụ sử dụng:**
+```
+# Phân tích nhóm "Trợ Lý tư vấn" trong 7 ngày
+zalo_analyze_group group_id="2747350517158961481" days=7
+
+# Tìm thành viên không tương tác 30 ngày
+zalo_get_inactive_members group_id="2747350517158961481" days=30
+
+# Xoá thành viên
+zalo_remove_member group_id="2747350517158961481" user_ids=["6537355654795723984"]
+
+# Gửi tin nhắn riêng
+zalo_send_dm user_id="1213889493140221873" message="Xin chào!"
+```
+
+### Quyền Admin
+
+Tài khoản Zalo đăng nhập sẽ tự động kiểm tra quyền admin từng nhóm:
+
+| Nhóm | Members | Quyền |
+|------|---------|-------|
+| Trợ Lý tư vấn | 4 | ✅ Admin (thêm/xoá thành viên) |
+| Các nhóm khác | 3-615 | 👀 Chỉ đọc + theo dõi |
+
+> **Muốn có quyền admin ở nhóm khác?** Cần được trưởng nhóm chỉ định làm admin/phó nhóm.
 
 ### Qua Hermes Skill
 
